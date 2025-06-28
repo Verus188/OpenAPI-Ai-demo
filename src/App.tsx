@@ -1,9 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 export const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [responseText, setResponseText] = useState<string | undefined>("");
-  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const promptTextAreaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [jsonFile, setJsonFile] = useState<File | null>(null);
   const [history, setHistory] = useState("");
@@ -12,12 +12,16 @@ export const App = () => {
     apiKey: "AIzaSyCzl8i9dRBBXPYh5S1DqWSMFAV51ZqVxsM",
   });
 
+  useEffect(() => {
+    setHistory("");
+  }, [jsonFile]);
+
   //отправка запроса
   const sendRequest = async (requestCounter: number = 0) => {
     setIsLoading(true);
-    if (textAreaRef.current === null || requestCounter > 5) return;
+    if (promptTextAreaRef.current === null || requestCounter > 5) return;
 
-    const requestPrompt = textAreaRef.current.value;
+    const requestPrompt = promptTextAreaRef.current.value;
 
     //параметры запроса, если нет json файла
     const defaulParameters = {
@@ -28,7 +32,8 @@ export const App = () => {
       },
     };
 
-    const jsonParametersSystemPrompt = "Не используй markdown в ответе.";
+    const jsonParametersSystemPrompt =
+      "Не используй markdown в ответе. Ты получил json файл, который описывает OpenAPI спецификацию. В первом абзаце кратко опиши содержание файла (в виде 'Содеражание: ...'). Во втором опиши проблемы документации в виде списка. После каждого элемнта списка ставь перенос строки, чтобы между элементами была пустая строка. Каждый элемент списка должен быть пронумерован в виде  1)... 2)... ";
     let jsonText = "";
 
     if (jsonFile) {
@@ -40,6 +45,9 @@ export const App = () => {
       model: "gemini-2.5-flash",
       contents: requestPrompt,
       config: {
+        temperature: 0.0,
+        topP: 1,
+        topK: 1,
         systemInstruction:
           jsonText + " " + jsonParametersSystemPrompt + " " + history,
       },
@@ -64,10 +72,10 @@ export const App = () => {
     <div className="p-10 flex flex-col gap-5">
       <div className="flex gap-5 items-center">
         <textarea
-          ref={textAreaRef}
+          ref={promptTextAreaRef}
           name="requestArea"
           id="requestArea"
-          placeholder="Request..."
+          placeholder="Prompt..."
           className="w-1/3 resize-none h-60 border-1 border-border outline-none text-2xl rounded-lg p-2 text-mainTextColor bg-secondaryBackground"
         ></textarea>
         <div className="grid grid-rows-3 gap-5">
